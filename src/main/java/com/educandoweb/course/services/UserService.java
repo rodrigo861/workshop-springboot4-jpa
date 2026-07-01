@@ -1,14 +1,16 @@
 package com.educandoweb.course.services;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.educandoweb.course.entities.User;
 import com.educandoweb.course.repositories.UserRepository;
+import com.educandoweb.course.services.execptions.DatabaseException;
+import com.educandoweb.course.services.execptions.ResourceNotFoundException;
 
 @Service
 public class UserService {
@@ -21,8 +23,8 @@ public class UserService {
 	}
 
 	public User findById(Long id) {
-		Optional<User> obj = repository.findById(id);
-		return obj.get();
+	    return repository.findById(id)
+	            .orElseThrow(() -> new ResourceNotFoundException(id));
 	}
 
 	public User insert(User obj) {
@@ -30,13 +32,24 @@ public class UserService {
 	}
 
 	public void delete(Long id) {
-		repository.deleteById(id);
+
+	    if (!repository.existsById(id)) {
+	        throw new ResourceNotFoundException(id);
+	    }
+
+	    try {
+	        repository.deleteById(id);
+	    }
+	    catch (DataIntegrityViolationException e) {
+	        throw new DatabaseException(e.getMessage());
+	    }
 	}
 
 	@Transactional
 	public User update(Long id, User obj) {
 
-		User entity = repository.findById(id).orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+		User entity = repository.findById(id)
+		        .orElseThrow(() -> new ResourceNotFoundException(id));
 
 		updateData(entity, obj);
 
